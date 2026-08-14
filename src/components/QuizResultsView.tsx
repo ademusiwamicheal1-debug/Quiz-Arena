@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Share2, Twitter, Copy, Download, Check, RotateCcw, ArrowRight, Award, CheckCircle2, XCircle, Sparkles, Send } from 'lucide-react';
+import { Trophy, Share2, Twitter, Copy, Download, Check, RotateCcw, ArrowRight, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { Question, UserStats } from '../types';
-
 import { User as FirebaseUser } from 'firebase/auth';
 
 interface QuizResultsViewProps {
@@ -71,7 +70,6 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Canvas size
     canvas.width = 600;
     canvas.height = 340;
 
@@ -83,7 +81,7 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     ctx.fillRect(0, 0, 600, 340);
 
     // Decorative circle
-    ctx.fillStyle = 'rgba(139, 92, 246, 0.15)';
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
     ctx.beginPath();
     ctx.arc(520, 60, 140, 0, Math.PI * 2);
     ctx.fill();
@@ -98,51 +96,42 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     ctx.font = 'bold 24px sans-serif';
     ctx.fillText('QUIZ ARENA • OFFICIAL SCORE BADGE', 40, 50);
 
-    // Category Badge
-    ctx.fillStyle = primaryColor;
-    ctx.fillRect(40, 70, 160, 30);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'extrabold 12px sans-serif';
-    ctx.fillText(results.category.toUpperCase(), 50, 90);
-
-    // Quiz Title
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(results.quizTitle, 40, 145);
-
-    // Score Banner
-    ctx.fillStyle = '#10b981';
-    ctx.font = 'black 54px sans-serif';
-    ctx.fillText(`${results.score} PTS`, 40, 215);
-
-    // Stats Row
+    // Quiz title
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '16px sans-serif';
-    ctx.fillText(
-      `Accuracy: ${results.accuracy}%  |  Correct: ${results.correctAnswers}/${results.totalQuestions}  |  Time: ${results.timeSpentSeconds}s`,
-      40,
-      255
-    );
+    ctx.font = '16px monospace';
+    ctx.fillText(`Subject: ${results.quizTitle}`, 40, 85);
 
-    // Player Name Footer
+    // Player info
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`Player: ${userStats.username}`, 40, 130);
+
+    // Big Score
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 52px monospace';
+    ctx.fillText(`${results.score.toLocaleString()} PTS`, 40, 195);
+
+    // Metrics grid
     ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`Player: @${userStats.username}`, 40, 295);
+    ctx.font = '15px monospace';
+    ctx.fillText(`Accuracy: ${results.accuracy}%`, 40, 245);
+    ctx.fillText(`Correct: ${results.correctAnswers}/${results.totalQuestions}`, 230, 245);
+    ctx.fillText(`Time: ${results.timeSpentSeconds}s`, 420, 245);
 
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'italic 12px sans-serif';
-    ctx.fillText('Can you beat my score? Try in Quiz Arena!', 340, 295);
+    // Watermark
+    ctx.fillStyle = '#64748b';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('Verified on Quiz Arena Rapid-Fire Live Platform', 40, 300);
   }, [results, userStats, primaryColor]);
 
   const handleDownloadBadge = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `QuizArena_Score_${results.score}pts.png`;
-    link.href = dataUrl;
-    link.click();
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `quiz-arena-score-${Date.now()}.png`;
+    a.click();
     setBadgeDownloaded(true);
     setTimeout(() => setBadgeDownloaded(false), 3000);
   };
@@ -201,66 +190,75 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
     <div className="max-w-4xl mx-auto px-4 py-8 animate-fadeIn" id="quiz-results-container">
       {/* Celebration Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white shadow-xl bg-indigo-600 animate-bounce">
+        <div
+          className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white shadow-xl animate-bounce"
+          style={{ backgroundColor: primaryColor }}
+        >
           <Trophy className="w-8 h-8" />
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 mb-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold app-text mb-2">
           Quiz Challenge Completed!
         </h1>
-        <p className="text-xs font-mono text-slate-400">
-          Awesome work, <span className="text-slate-200 font-bold">{userStats.username}</span>! Here is your performance overview.
+        <p className="text-xs font-mono app-text-muted">
+          Awesome work, <span className="app-text font-bold">{userStats.username}</span>! Here is your performance overview.
         </p>
       </div>
 
       {/* Main Score Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-mono">
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center shadow-md">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+        <div className="app-surface p-4 rounded-2xl app-border border text-center shadow-md">
+          <span className="text-[10px] font-bold uppercase tracking-wider app-text-subtle block mb-1">
             Total Points
           </span>
-          <span className="text-2xl sm:text-3xl font-bold text-green-400">
+          <span className="text-2xl sm:text-3xl font-bold text-emerald-500">
             {results.score.toLocaleString()}
           </span>
         </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center shadow-md">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+        <div className="app-surface p-4 rounded-2xl app-border border text-center shadow-md">
+          <span className="text-[10px] font-bold uppercase tracking-wider app-text-subtle block mb-1">
             Accuracy
           </span>
-          <span className="text-2xl sm:text-3xl font-bold text-indigo-400">
+          <span className="text-2xl sm:text-3xl font-bold" style={{ color: primaryColor }}>
             {results.accuracy}%
           </span>
         </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center shadow-md">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+        <div className="app-surface p-4 rounded-2xl app-border border text-center shadow-md">
+          <span className="text-[10px] font-bold uppercase tracking-wider app-text-subtle block mb-1">
             Correct Answers
           </span>
-          <span className="text-2xl sm:text-3xl font-bold text-sky-400">
+          <span className="text-2xl sm:text-3xl font-bold text-sky-500">
             {results.correctAnswers} / {results.totalQuestions}
           </span>
         </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center shadow-md">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+        <div className="app-surface p-4 rounded-2xl app-border border text-center shadow-md">
+          <span className="text-[10px] font-bold uppercase tracking-wider app-text-subtle block mb-1">
             Time Spent
           </span>
-          <span className="text-2xl sm:text-3xl font-bold text-orange-400">
+          <span className="text-2xl sm:text-3xl font-bold text-orange-500">
             {results.timeSpentSeconds}s
           </span>
         </div>
       </div>
 
       {/* Leaderboard Submit Callout */}
-      <div className="bg-slate-900 rounded-xl p-5 border border-indigo-500/40 text-white shadow-xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="app-surface rounded-2xl p-5 app-border border text-white shadow-xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 text-center sm:text-left">
-          <div className="w-10 h-10 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-            <Trophy className="w-5 h-5 text-orange-400" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border"
+            style={{
+              backgroundColor: `rgba(var(--color-primary-rgb), 0.15)`,
+              borderColor: `rgba(var(--color-primary-rgb), 0.3)`,
+            }}
+          >
+            <Trophy className="w-5 h-5 text-amber-500" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-slate-100">Claim Your Rank on Global Leaderboard</h3>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
+            <h3 className="font-bold text-sm app-text">Claim Your Rank on Global Leaderboard</h3>
+            <p className="text-xs app-text-muted font-mono mt-0.5">
               Submit your score of {results.score} pts to compete against players worldwide!
             </p>
           </div>
@@ -270,7 +268,7 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
           {!currentUser && onGoogleSignIn && (
             <button
               onClick={onGoogleSignIn}
-              className="px-4 py-2.5 rounded-lg font-bold text-xs bg-white hover:bg-slate-100 text-slate-900 shadow-md transition-colors flex items-center gap-2 border border-slate-200"
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-white hover:bg-slate-50 text-slate-900 shadow-md transition-colors flex items-center gap-2 border border-slate-200"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -297,11 +295,12 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
           <button
             onClick={handleLeaderboardSubmit}
             disabled={hasSubmittedScore || isSubmitting}
-            className={`px-5 py-2.5 rounded-lg font-bold text-xs shadow-md transition-colors flex items-center gap-2 ${
+            className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-2 ${
               hasSubmittedScore
                 ? 'bg-emerald-600 text-white cursor-default'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                : 'text-white hover:opacity-90 active:scale-95'
             }`}
+            style={!hasSubmittedScore ? { backgroundColor: primaryColor } : {}}
           >
             {hasSubmittedScore ? (
               <>
@@ -321,37 +320,37 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
       </div>
 
       {/* Social Media Share Badge Section */}
-      <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 shadow-xl mb-8">
+      <div className="app-surface rounded-2xl p-5 app-border border shadow-xl mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Share2 className="w-4 h-4 text-indigo-400" />
-            <h3 className="font-bold text-sm text-slate-200 uppercase font-mono tracking-wider">
-              Social Media Score Badge
+            <Share2 className="w-4 h-4" style={{ color: primaryColor }} />
+            <h3 className="font-bold text-sm app-text uppercase font-mono tracking-wider">
+              Score Share Badge
             </h3>
           </div>
-          <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+          <span className="text-[10px] font-mono font-bold app-text-subtle uppercase tracking-wider">
             Share & Challenge Friends
           </span>
         </div>
 
-        {/* Hidden Canvas rendered for badge */}
-        <div className="rounded-lg overflow-hidden mb-5 border border-slate-800 bg-slate-950 flex justify-center">
-          <canvas ref={canvasRef} className="w-full max-w-xl h-auto" />
+        {/* Canvas rendered for badge */}
+        <div className="rounded-xl overflow-hidden mb-5 app-border border app-surface-subtle flex justify-center p-2">
+          <canvas ref={canvasRef} className="w-full max-w-xl h-auto rounded-lg shadow-sm" />
         </div>
 
         {/* Share Actions Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={handleDownloadBadge}
-            className="py-2.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-xs text-slate-200 border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+            className="py-2.5 px-3 rounded-xl app-surface-subtle app-text app-border border hover:opacity-80 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
           >
-            {badgeDownloaded ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Download className="w-3.5 h-3.5" />}
+            {badgeDownloaded ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Download className="w-3.5 h-3.5" />}
             {badgeDownloaded ? 'Saved!' : 'Download Badge'}
           </button>
 
           <button
             onClick={handleShareTwitter}
-            className="py-2.5 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 font-bold text-xs text-white flex items-center justify-center gap-2 transition-colors shadow-md"
+            className="py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 font-bold text-xs text-white flex items-center justify-center gap-2 transition-colors shadow-md"
           >
             <Twitter className="w-3.5 h-3.5 fill-current" />
             Share on X
@@ -359,15 +358,16 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
 
           <button
             onClick={handleCopyShareLink}
-            className="py-2.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-xs text-slate-200 border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+            className="py-2.5 px-3 rounded-xl app-surface-subtle app-text app-border border hover:opacity-80 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
           >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
             {copiedLink ? 'Copied!' : 'Copy Link'}
           </button>
 
           <button
             onClick={handleNativeShare}
-            className="py-2.5 px-3 rounded-lg font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-md flex items-center justify-center gap-2 transition-colors"
+            className="py-2.5 px-3 rounded-xl font-bold text-xs text-white shadow-md flex items-center justify-center gap-2 transition-all hover:opacity-90"
+            style={{ backgroundColor: primaryColor }}
           >
             <Share2 className="w-3.5 h-3.5" />
             Share App
@@ -376,16 +376,16 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
       </div>
 
       {/* Detailed Question Review */}
-      <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 shadow-xl mb-8">
-        <h3 className="font-bold text-sm text-slate-200 mb-5 uppercase font-mono tracking-wider">
-          Question Review & Educational Explanations
+      <div className="app-surface rounded-2xl p-5 app-border border shadow-xl mb-8">
+        <h3 className="font-bold text-sm app-text mb-5 uppercase font-mono tracking-wider">
+          Question Review & Explanations
         </h3>
 
         <div className="space-y-4">
           {results.answers.map((item, idx) => (
             <div
               key={idx}
-              className={`p-4 rounded-lg border ${
+              className={`p-4 rounded-xl border ${
                 item.isCorrect
                   ? 'border-emerald-500/30 bg-emerald-500/10'
                   : 'border-rose-500/30 bg-rose-500/10'
@@ -393,37 +393,37 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded bg-slate-800 text-slate-300 font-mono font-bold text-xs flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-lg app-surface app-text font-mono font-bold text-xs flex items-center justify-center app-border border">
                     {idx + 1}
                   </span>
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-200">
+                  <h4 className="font-bold text-xs sm:text-sm app-text">
                     {item.question.question}
                   </h4>
                 </div>
 
                 {item.isCorrect ? (
-                  <span className="flex items-center gap-1 text-xs font-mono font-bold text-green-400 shrink-0">
+                  <span className="flex items-center gap-1 text-xs font-mono font-bold text-emerald-500 shrink-0">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Correct
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs font-mono font-bold text-rose-400 shrink-0">
+                  <span className="flex items-center gap-1 text-xs font-mono font-bold text-rose-500 shrink-0">
                     <XCircle className="w-3.5 h-3.5" /> Incorrect
                   </span>
                 )}
               </div>
 
               {/* Options breakdown */}
-              <div className="text-xs font-mono space-y-1 mb-3 pl-7">
+              <div className="text-xs font-mono space-y-1 mb-3 pl-8">
                 <div>
-                  <span className="text-slate-400">Your choice: </span>
-                  <span className={`font-bold ${item.isCorrect ? 'text-green-400' : 'text-rose-400'}`}>
+                  <span className="app-text-muted">Your choice: </span>
+                  <span className={`font-bold ${item.isCorrect ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {item.selectedIndex !== null ? item.question.options[item.selectedIndex] : 'Time Expired'}
                   </span>
                 </div>
                 {!item.isCorrect && (
                   <div>
-                    <span className="text-slate-400">Correct answer: </span>
-                    <span className="font-bold text-green-400">
+                    <span className="app-text-muted">Correct answer: </span>
+                    <span className="font-bold text-emerald-500">
                       {item.question.options[item.question.correctIndex]}
                     </span>
                   </div>
@@ -431,7 +431,7 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
               </div>
 
               {/* Explanation */}
-              <p className="text-xs text-slate-300 bg-slate-950/80 p-3 rounded border border-slate-800 leading-relaxed font-sans pl-7">
+              <p className="text-xs app-text app-surface p-3 rounded-lg app-border border leading-relaxed font-sans pl-4">
                 {item.question.explanation}
               </p>
             </div>
@@ -443,7 +443,7 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={onPlayAgain}
-          className="flex-1 py-3 rounded-lg font-bold text-xs text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+          className="flex-1 py-3.5 rounded-xl font-bold text-xs app-surface-subtle app-text app-border border hover:opacity-80 flex items-center justify-center gap-2 transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Play Again
@@ -451,7 +451,8 @@ export const QuizResultsView: React.FC<QuizResultsViewProps> = ({
 
         <button
           onClick={onExploreMore}
-          className="flex-1 py-3 rounded-lg font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md flex items-center justify-center gap-2 transition-colors"
+          className="flex-1 py-3.5 rounded-xl font-bold text-xs text-white shadow-md flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+          style={{ backgroundColor: primaryColor }}
         >
           Explore More Quizzes
           <ArrowRight className="w-3.5 h-3.5" />

@@ -17,6 +17,9 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
+  Copy,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import { UserStats } from '../types';
 import { User as FirebaseUser } from 'firebase/auth';
@@ -75,6 +78,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(initialAuthError || null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
+
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  const handleCopyHostname = () => {
+    if (currentHostname) {
+      navigator.clipboard.writeText(currentHostname);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2500);
+    }
+  };
 
   React.useEffect(() => {
     if (isOpen && initialAuthError) {
@@ -88,19 +102,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const isAdmin = isAdminUser(currentUser);
 
   const handleGoogleSignIn = async () => {
-    if (isAuthLoading) return;
     setIsAuthLoading(true);
     setAuthError(null);
     setAuthSuccess(null);
     try {
       const user = await signInWithGoogle();
       if (user) {
-        setAuthSuccess(`Welcome, ${user.displayName || user.email}!`);
-        const firestoreStats = await getUserStatsFromFirestore(user.uid);
-        if (firestoreStats) {
-          setUserStats(firestoreStats);
-          setUsernameInput(firestoreStats.username);
-          setSelectedAvatar(firestoreStats.avatar);
+        setAuthSuccess(`Signed in as ${user.displayName || user.email}!`);
+        const stats = await getUserStatsFromFirestore(user.uid);
+        if (stats) {
+          setUserStats(stats);
+          setUsernameInput(stats.username);
+          setSelectedAvatar(stats.avatar);
         } else {
           const newStats: UserStats = {
             ...userStats,
@@ -108,33 +121,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             avatar: user.photoURL || userStats.avatar,
           };
           setUserStats(newStats);
-          setUsernameInput(newStats.username);
-          setSelectedAvatar(newStats.avatar);
           await saveUserStatsToFirestore(user.uid, newStats, user.email || '');
         }
       }
     } catch (error: any) {
-      let rawMsg = error?.message || error?.code || '';
-      if (rawMsg.includes('auth/cancelled-popup-request') || rawMsg.includes('auth/popup-closed-by-user')) {
-        return;
+      console.error('Google Sign in error:', error);
+      let msg = error.message || 'Failed to sign in with Google.';
+      if (msg.includes('auth/unauthorized-domain') || msg.includes('auth/operation-not-supported-in-this-environment')) {
+        msg = `Current app domain (${currentHostname || 'this domain'}) is not listed in Authorized Domains in Firebase Console. You can add it, or use Email / Gmail Sign-In below!`;
+      } else if (msg.includes('auth/popup-closed-by-user') || msg.includes('auth/cancelled-popup-request')) {
+        msg = 'Sign in popup closed before finishing.';
       }
-      console.error('Google Auth Error:', error);
-      let friendlyMsg = 'Failed to sign in with Google.';
-
-      if (rawMsg.includes('auth/configuration-not-found') || rawMsg.includes('auth/operation-not-allowed')) {
-        friendlyMsg =
-          'Firebase Authentication is not yet enabled in the Firebase Console for project "quiz-pro-30283". To enable it, visit Firebase Console > Authentication > Sign-in method. You can also customize your Player Name below and play all quizzes right now!';
-      } else if (rawMsg.includes('auth/popup-blocked')) {
-        friendlyMsg = 'Browser blocked the popup window. Switched to Email Sign-In below.';
-        setAuthMode('email-signin');
-      } else if (rawMsg.includes('auth/unauthorized-domain')) {
-        friendlyMsg = 'Current app domain is not listed in Authorized Domains in Firebase Console. Please use Email / Gmail Sign-In below.';
-        setAuthMode('email-signin');
-      } else if (rawMsg) {
-        friendlyMsg = rawMsg;
-      }
-
-      setAuthError(friendlyMsg);
+      setAuthError(msg);
     } finally {
       setIsAuthLoading(false);
     }
@@ -147,42 +145,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setAuthSuccess(null);
 
     try {
-      if (authMode === 'email-signup') {
-        if (!emailInput || !passwordInput) {
-          throw new Error('Please enter both email and password.');
+      if (authMode === 'email-signin') {
+        const user = await signInWithEmail(emailInput.trim(), passwordInput);
+        setAuthSuccess(`Welcome back, ${user.displayName || user.email}!`);
+        const stats = await getUserStatsFromFirestore(user.uid);
+        if (stats) {
+          setUserStats(stats);
+          setUsernameInput(stats.username);
+          setSelectedAvatar(stats.avatar);
         }
-        if (passwordInput.length < 6) {
-          throw new Error('Password must be at least 6 characters long.');
-        }
-        const user = await signUpWithEmail(emailInput, passwordInput, displayNameInput || 'Quizzer');
-        setAuthSuccess('Account created successfully! Syncing profile...');
-        
+      } else if (authMode === 'email-signup') {
+        const name = displayNameInput.trim() || emailInput.split('@')[0];
+        const user = await signUpWithEmail(emailInput.trim(), passwordInput, name);
+        setAuthSuccess(`Account created for ${name}!`);
         const newStats: UserStats = {
           ...userStats,
-          username: displayNameInput.trim() || emailInput.split('@')[0],
+          username: name,
           avatar: selectedAvatar,
         };
         setUserStats(newStats);
-        setUsernameInput(newStats.username);
         await saveUserStatsToFirestore(user.uid, newStats, user.email || '');
-      } else if (authMode === 'email-signin') {
-        if (!emailInput || !passwordInput) {
-          throw new Error('Please enter your email and password.');
-        }
-        const user = await signInWithEmail(emailInput, passwordInput);
-        setAuthSuccess(`Welcome back, ${user.displayName || user.email}!`);
-        const firestoreStats = await getUserStatsFromFirestore(user.uid);
-        if (firestoreStats) {
-          setUserStats(firestoreStats);
-          setUsernameInput(firestoreStats.username);
-          setSelectedAvatar(firestoreStats.avatar);
-        }
       } else if (authMode === 'forgot-password') {
-        if (!emailInput) {
-          throw new Error('Please enter your email address to receive reset instructions.');
-        }
-        await sendPasswordReset(emailInput);
-        setAuthSuccess(`Password reset email sent to ${emailInput}. Check your inbox!`);
+        await sendPasswordReset(emailInput.trim());
+        setAuthSuccess(`Password reset email sent to ${emailInput.trim()}. Check your inbox!`);
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -234,36 +219,39 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
       <div
-        className="w-full max-w-md bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden text-slate-100"
+        className="w-full max-w-md app-surface rounded-2xl shadow-2xl app-border border overflow-hidden app-text transition-colors"
         id="user-profile-modal-container"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-5 app-border border-b">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
+              style={{ backgroundColor: primaryColor }}
+            >
               {isAdmin ? <Crown className="w-5 h-5 text-amber-300" /> : <User className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base leading-none text-slate-100">
+                <h3 className="font-bold text-base leading-none app-text">
                   {currentUser ? (isAdmin ? 'Admin Portal Account' : 'Player Account') : 'Authentication & Sign In'}
                 </h3>
                 {isAdmin && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30 font-mono">
                     ADMIN
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mt-1 font-mono">
+              <p className="text-xs app-text-muted mt-1 font-mono">
                 Google & Gmail Authentication + Firestore Sync
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-lg app-text-muted hover:app-text app-surface-subtle transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -272,28 +260,32 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {/* Authenticated User Status Card OR Auth Options */}
         <div className="p-6 pb-2">
           {currentUser ? (
-            <div className="p-4 rounded-xl bg-indigo-950/60 border border-indigo-500/40 flex items-center justify-between gap-3 shadow-lg">
+            <div className="p-4 rounded-xl app-surface-subtle app-border border flex items-center justify-between gap-3 shadow-md">
               <div className="flex items-center gap-3 min-w-0">
                 {currentUser.photoURL ? (
                   <img
                     src={currentUser.photoURL}
                     alt={currentUser.displayName || 'User'}
-                    className="w-11 h-11 rounded-lg object-cover ring-2 ring-indigo-500 shrink-0"
+                    className="w-11 h-11 rounded-xl object-cover ring-2 shrink-0"
+                    style={{ ringColor: primaryColor }}
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-lg shrink-0">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg shrink-0"
+                    style={{ backgroundColor: primaryColor }}
+                  >
                     {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-500">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Authenticated ({isAdmin ? 'Admin' : 'User'})</span>
                   </div>
-                  <p className="text-xs font-bold text-slate-100 truncate">
+                  <p className="text-xs font-bold app-text truncate">
                     {currentUser.displayName || userStats.username}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono truncate">
+                  <p className="text-[10px] app-text-muted font-mono truncate">
                     {currentUser.email}
                   </p>
                 </div>
@@ -303,16 +295,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 type="button"
                 onClick={handleSignOut}
                 disabled={isAuthLoading}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-rose-400 border border-slate-700 shrink-0 flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 rounded-xl app-surface hover:bg-rose-500/10 text-xs font-bold text-rose-500 app-border border shrink-0 flex items-center gap-1.5 transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sign Out
               </button>
             </div>
           ) : (
-            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-4">
+            <div className="app-surface-subtle rounded-2xl p-4 app-border border space-y-4">
               {/* Auth Mode Toggle Buttons */}
-              <div className="grid grid-cols-2 gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs font-semibold">
+              <div className="grid grid-cols-2 gap-1.5 app-surface p-1 rounded-xl app-border border text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => {
@@ -320,11 +312,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     setAuthError(null);
                     setAuthSuccess(null);
                   }}
-                  className={`py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                     authMode === 'google'
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'text-white font-bold shadow-sm'
+                      : 'app-text-muted hover:app-text'
                   }`}
+                  style={authMode === 'google' ? { backgroundColor: primaryColor } : {}}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Google 1-Click
@@ -337,11 +330,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     setAuthError(null);
                     setAuthSuccess(null);
                   }}
-                  className={`py-1.5 px-3 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
                     authMode !== 'google'
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'text-white font-bold shadow-sm'
+                      : 'app-text-muted hover:app-text'
                   }`}
+                  style={authMode !== 'google' ? { backgroundColor: primaryColor } : {}}
                 >
                   <Mail className="w-3.5 h-3.5" />
                   Email / Gmail
@@ -351,7 +345,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {/* GOOGLE OAuth Mode */}
               {authMode === 'google' && (
                 <div className="text-center space-y-3 pt-1">
-                  <p className="text-xs text-slate-300 font-medium">
+                  <p className="text-xs app-text-muted font-medium">
                     Sign in or register instantly with your Google or Gmail account to sync stats and record scores on the global leaderboard.
                   </p>
 
@@ -359,7 +353,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     type="button"
                     onClick={handleGoogleSignIn}
                     disabled={isAuthLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-md flex items-center justify-center gap-2.5 transition-colors"
+                    className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs shadow-md flex items-center justify-center gap-2.5 transition-all border border-slate-200"
                   >
                     {isAuthLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin text-slate-800" />
@@ -392,7 +386,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {authMode !== 'google' && (
                 <form onSubmit={handleEmailAuthSubmit} className="space-y-3 pt-1">
                   {/* Email & Password Mode Switcher */}
-                  <div className="flex items-center justify-between text-[11px] font-mono border-b border-slate-800 pb-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono app-border border-b pb-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -400,8 +394,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         setAuthError(null);
                       }}
                       className={`font-bold ${
-                        authMode === 'email-signin' ? 'text-indigo-400 underline' : 'text-slate-400'
+                        authMode === 'email-signin' ? 'underline' : 'app-text-muted'
                       }`}
+                      style={authMode === 'email-signin' ? { color: primaryColor } : {}}
                     >
                       Sign In
                     </button>
@@ -412,8 +407,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         setAuthError(null);
                       }}
                       className={`font-bold ${
-                        authMode === 'email-signup' ? 'text-indigo-400 underline' : 'text-slate-400'
+                        authMode === 'email-signup' ? 'underline' : 'app-text-muted'
                       }`}
+                      style={authMode === 'email-signup' ? { color: primaryColor } : {}}
                     >
                       Create Account
                     </button>
@@ -424,8 +420,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         setAuthError(null);
                       }}
                       className={`font-bold ${
-                        authMode === 'forgot-password' ? 'text-indigo-400 underline' : 'text-slate-400'
+                        authMode === 'forgot-password' ? 'underline' : 'app-text-muted'
                       }`}
+                      style={authMode === 'forgot-password' ? { color: primaryColor } : {}}
                     >
                       Reset Password
                     </button>
@@ -434,7 +431,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {/* Display Name (Sign Up only) */}
                   {authMode === 'email-signup' && (
                     <div>
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider app-text-subtle block mb-1">
                         Full Name / Display Nickname
                       </label>
                       <div className="relative">
@@ -444,16 +441,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           value={displayNameInput}
                           onChange={e => setDisplayNameInput(e.target.value)}
                           placeholder="e.g. Alex Quizmaster"
-                          className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl app-surface app-border border text-xs font-semibold app-text focus:outline-none"
                         />
-                        <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <User className="w-4 h-4 app-text-subtle absolute left-3 top-1/2 -translate-y-1/2" />
                       </div>
                     </div>
                   )}
 
                   {/* Email Input */}
                   <div>
-                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    <label className="text-[10px] font-mono font-bold uppercase tracking-wider app-text-subtle block mb-1">
                       Gmail or Email Address
                     </label>
                     <div className="relative">
@@ -463,16 +460,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         value={emailInput}
                         onChange={e => setEmailInput(e.target.value)}
                         placeholder="yourname@gmail.com"
-                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl app-surface app-border border text-xs font-semibold app-text focus:outline-none font-mono"
                       />
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Mail className="w-4 h-4 app-text-subtle absolute left-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
 
                   {/* Password Input (if not forgot password mode) */}
                   {authMode !== 'forgot-password' && (
                     <div>
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                      <label className="text-[10px] font-mono font-bold uppercase tracking-wider app-text-subtle block mb-1">
                         Password
                       </label>
                       <div className="relative">
@@ -482,13 +479,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                           value={passwordInput}
                           onChange={e => setPasswordInput(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                          className="w-full pl-9 pr-9 py-2 rounded-xl app-surface app-border border text-xs font-semibold app-text focus:outline-none font-mono"
                         />
-                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Lock className="w-4 h-4 app-text-subtle absolute left-3 top-1/2 -translate-y-1/2" />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 app-text-subtle hover:app-text"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -499,7 +496,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   <button
                     type="submit"
                     disabled={isAuthLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-colors mt-2"
+                    className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all hover:opacity-90 mt-2"
+                    style={{ backgroundColor: primaryColor }}
                   >
                     {isAuthLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
@@ -525,12 +523,57 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
               {/* Status Feedback Banners */}
               {authError && (
-                <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-600/70 text-amber-200 text-xs font-medium space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs font-medium space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>Authentication Notice</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-amber-100/90">{authError}</p>
+                  <p className="text-[11px] leading-relaxed opacity-90">{authError}</p>
+
+                  {/* Domain Authorization Helper */}
+                  {(authError.includes('Authorized Domains') || authError.includes('unauthorized-domain') || authError.includes('Current app domain')) && (
+                    <div className="mt-2 p-3 rounded-xl app-surface app-border border text-slate-200 space-y-2 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-amber-500 font-bold text-[11px]">
+                        <Globe className="w-3.5 h-3.5 shrink-0" />
+                        <span>How to Authorize This Domain in Firebase:</span>
+                      </div>
+                      <ol className="list-decimal list-inside space-y-1 app-text-muted text-[10.5px] leading-relaxed">
+                        <li>
+                          Open <a href="https://console.firebase.google.com/project/quiz-pro-30283/authentication/settings" target="_blank" rel="noreferrer" className="text-amber-500 underline font-semibold inline-flex items-center gap-0.5">Firebase Console Settings <ExternalLink className="w-3 h-3 inline" /></a>
+                        </li>
+                        <li>Click the <strong>Authorized domains</strong> tab & select <strong>Add domain</strong></li>
+                        <li>Paste the app domain below:</li>
+                      </ol>
+
+                      {currentHostname && (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <code className="flex-1 px-2.5 py-1.5 rounded-lg app-surface-subtle app-border border text-amber-500 text-[10px] font-mono select-all truncate">
+                            {currentHostname}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={handleCopyHostname}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 border border-amber-500/40 text-[10.5px] font-bold transition-all flex items-center gap-1 shrink-0"
+                          >
+                            {copiedDomain ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Domain</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-[10px] app-text-subtle italic">
+                        💡 Tip: You can also use Email / Password sign-in or play as Guest below without adding domains!
+                      </p>
+                    </div>
+                  )}
 
                   {/* Quick helper buttons depending on error type */}
                   {authError.includes('Invalid credentials') && authMode === 'email-signin' && (
@@ -540,27 +583,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         setAuthMode('email-signup');
                         setAuthError(null);
                       }}
-                      className="mt-1 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-[11px] font-bold transition-colors flex items-center gap-1.5"
+                      className="mt-1 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 border border-amber-500/40 text-[11px] font-bold transition-colors flex items-center gap-1.5"
                     >
-                      <UserPlus className="w-3.5 h-3.5 text-amber-300" />
+                      <UserPlus className="w-3.5 h-3.5 text-amber-500" />
                       <span>Switch to Create Account</span>
                     </button>
-                  )}
-
-                  {authError.includes('Firebase Console') && (
-                    <div className="pt-1">
-                      <p className="text-[10px] text-amber-300/80 font-mono mb-1">
-                        💡 No Firebase Auth configured? You can still play all quizzes, record your scores locally, and personalize your display name below:
-                      </p>
-                    </div>
                   )}
                 </div>
               )}
 
               {authSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-600/70 text-emerald-200 text-xs font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <p className="text-[11px] text-emerald-100/90 font-bold">{authSuccess}</p>
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <p className="text-[11px] font-bold">{authSuccess}</p>
                 </div>
               )}
             </div>
@@ -568,10 +603,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* Profile Customization Form */}
-        <form onSubmit={handleSaveProfile} className="p-6 space-y-5 border-t border-slate-800">
+        <form onSubmit={handleSaveProfile} className="p-6 space-y-5 app-border border-t">
           {/* Username input */}
           <div>
-            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-2">
+            <label className="text-[11px] font-mono font-bold uppercase tracking-wider app-text-subtle block mb-2">
               Player Display Name
             </label>
             <input
@@ -580,14 +615,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               maxLength={20}
               value={usernameInput}
               onChange={e => setUsernameInput(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+              className="w-full px-4 py-2.5 rounded-xl app-surface-subtle app-border border text-xs font-bold app-text focus:outline-none font-mono"
               placeholder="Enter your nickname..."
             />
           </div>
 
           {/* Avatar selector */}
           <div>
-            <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 block mb-3">
+            <label className="text-[11px] font-mono font-bold uppercase tracking-wider app-text-subtle block mb-3">
               Select Profile Avatar
             </label>
             <div className="grid grid-cols-3 gap-3">
@@ -598,15 +633,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     type="button"
                     key={idx}
                     onClick={() => setSelectedAvatar(avatarUrl)}
-                    className={`relative p-1 rounded-xl border-2 transition-all overflow-hidden ${
+                    className={`relative p-1 rounded-2xl border-2 transition-all overflow-hidden ${
                       isSelected
-                        ? 'border-indigo-500 ring-2 ring-indigo-500/30 scale-105'
+                        ? 'ring-2 scale-105'
                         : 'border-transparent opacity-70 hover:opacity-100'
                     }`}
+                    style={isSelected ? { borderColor: primaryColor } : {}}
                   >
-                    <img src={avatarUrl} alt="Avatar option" className="w-full h-14 object-cover rounded-lg" />
+                    <img src={avatarUrl} alt="Avatar option" className="w-full h-14 object-cover rounded-xl" />
                     {isSelected && (
-                      <div className="absolute inset-0 bg-indigo-600/40 backdrop-blur-[1px] flex items-center justify-center text-white">
+                      <div
+                        className="absolute inset-0 backdrop-blur-[1px] flex items-center justify-center text-white"
+                        style={{ backgroundColor: `rgba(var(--color-primary-rgb), 0.4)` }}
+                      >
                         <Check className="w-5 h-5 drop-shadow" />
                       </div>
                     )}
@@ -620,13 +659,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg text-xs font-bold text-slate-400 hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-bold app-text-muted hover:app-text transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md transition-colors"
+              className="px-5 py-2 rounded-xl font-bold text-xs text-white shadow-md transition-all hover:opacity-90"
+              style={{ backgroundColor: primaryColor }}
             >
               Save Profile
             </button>

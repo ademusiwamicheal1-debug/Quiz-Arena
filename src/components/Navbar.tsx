@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Trophy, BarChart3, Palette, Volume2, VolumeX, User, Bot, HelpCircle, Crown, ShieldCheck } from 'lucide-react';
+import { Trophy, BarChart3, Palette, Volume2, VolumeX, Bot, HelpCircle, Crown, Sun, Moon } from 'lucide-react';
 import { ThemeConfig, UserStats } from '../types';
 import { soundEffects } from '../utils/soundEffects';
 import { User as FirebaseUser } from 'firebase/auth';
@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 dark:bg-slate-900/95 border-b border-slate-800 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-40 app-nav border-b backdrop-blur-md transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <div
@@ -55,14 +55,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="flex items-center gap-3 cursor-pointer group"
           id="nav-logo-button"
         >
-          <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/20 group-hover:bg-indigo-400 transition-colors">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shadow-md transition-transform group-hover:scale-105"
+            style={{ backgroundColor: theme.primaryColor }}
+          >
             Q
           </div>
           <div>
-            <div className="font-extrabold text-lg tracking-tight text-white flex items-center gap-1">
-              QUIZ<span className="text-indigo-400">PRO</span>
+            <div className="font-extrabold text-lg tracking-tight app-text flex items-center gap-1">
+              QUIZ<span style={{ color: theme.primaryColor }}>PRO</span>
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 font-mono">
+            <div className="text-[10px] font-bold uppercase tracking-wider app-text-subtle flex items-center gap-1 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
               Live Arena
             </div>
@@ -70,15 +73,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+        <nav className="hidden md:flex items-center gap-1 app-surface-subtle p-1 rounded-xl app-border border">
           <button
             id="nav-tab-explore"
             onClick={() => setActiveTab('explore')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'explore'
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'text-white shadow-sm font-bold'
+                : 'app-text-muted hover:app-text hover:app-surface'
             }`}
+            style={activeTab === 'explore' ? { backgroundColor: theme.primaryColor } : {}}
           >
             <HelpCircle className="w-3.5 h-3.5" />
             Explore
@@ -89,13 +93,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('ai-gen')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'ai-gen'
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'text-white shadow-sm font-bold'
+                : 'app-text-muted hover:app-text hover:app-surface'
             }`}
+            style={activeTab === 'ai-gen' ? { backgroundColor: theme.primaryColor } : {}}
           >
-            <Bot className="w-3.5 h-3.5 text-indigo-400" />
+            <Bot className="w-3.5 h-3.5" />
             AI Generator
-            <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold border border-indigo-500/30">
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded uppercase font-bold border"
+              style={{
+                backgroundColor: `rgba(var(--color-primary-rgb), 0.15)`,
+                borderColor: `rgba(var(--color-primary-rgb), 0.3)`,
+                color: activeTab === 'ai-gen' ? '#ffffff' : theme.primaryColor,
+              }}
+            >
               Gemini
             </span>
           </button>
@@ -105,11 +117,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('leaderboard')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'leaderboard'
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'text-white shadow-sm font-bold'
+                : 'app-text-muted hover:app-text hover:app-surface'
             }`}
+            style={activeTab === 'leaderboard' ? { backgroundColor: theme.primaryColor } : {}}
           >
-            <Trophy className="w-3.5 h-3.5 text-orange-400" />
+            <Trophy className="w-3.5 h-3.5" style={{ color: activeTab === 'leaderboard' ? '#ffffff' : theme.accentColor }} />
             Leaderboard
           </button>
 
@@ -118,29 +131,30 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('stats')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'stats'
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                ? 'text-white shadow-sm font-bold'
+                : 'app-text-muted hover:app-text hover:app-surface'
             }`}
+            style={activeTab === 'stats' ? { backgroundColor: theme.primaryColor } : {}}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
+            <BarChart3 className="w-3.5 h-3.5" />
             My Stats
           </button>
 
-          {/* Admin Tab (visible for Admin users or toggleable) */}
+          {/* Admin Tab */}
           <button
             id="nav-tab-admin"
             onClick={() => setActiveTab('admin')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'admin'
                 ? 'bg-amber-600 text-white shadow-sm font-bold'
-                : 'text-amber-400/90 hover:text-amber-200 hover:bg-amber-950/40'
+                : 'text-amber-500 hover:text-amber-400 hover:app-surface'
             }`}
           >
-            <Crown className="w-3.5 h-3.5 text-amber-300" />
-            Admin Panel
+            <Crown className="w-3.5 h-3.5 text-amber-400" />
+            Admin
             {isAdmin && (
-              <span className="bg-amber-400/20 text-amber-300 text-[9px] px-1 rounded uppercase font-bold border border-amber-400/30">
-                ADMIN
+              <span className="bg-amber-500/20 text-amber-500 text-[9px] px-1 rounded uppercase font-bold border border-amber-500/30">
+                PRO
               </span>
             )}
           </button>
@@ -150,16 +164,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 sm:gap-3">
           {/* User Profile Score Display */}
           <div className="hidden lg:flex flex-col items-end pr-2">
-            <span className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider font-mono">Current Score</span>
-            <span className="text-base font-mono font-bold text-indigo-400">{userStats.totalScore.toLocaleString()}</span>
+            <span className="text-[10px] uppercase app-text-subtle font-semibold tracking-wider font-mono">Current Score</span>
+            <span className="text-base font-mono font-bold" style={{ color: theme.primaryColor }}>
+              {userStats.totalScore.toLocaleString()}
+            </span>
           </div>
 
           {/* Theme Builder */}
           <button
             id="theme-builder-button"
             onClick={openThemeModal}
-            className="p-2 rounded-lg bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition-colors border border-slate-700/60"
-            title="Theme Builder"
+            className="p-2 rounded-lg app-surface-subtle app-text app-border border hover:opacity-80 transition-all shadow-sm"
+            title="Theme Customizer"
           >
             <Palette className="w-4 h-4" />
           </button>
@@ -168,20 +184,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="sound-toggle-button"
             onClick={toggleSound}
-            className="p-2 rounded-lg bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition-colors border border-slate-700/60"
+            className="p-2 rounded-lg app-surface-subtle app-text app-border border hover:opacity-80 transition-all shadow-sm"
             title={isMuted ? 'Unmute Sounds' : 'Mute Sounds'}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            {isMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
           </button>
 
           {/* Dark/Light mode button */}
           <button
             id="dark-light-toggle-button"
             onClick={toggleDarkMode}
-            className="p-2 rounded-lg bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition-colors text-xs font-bold border border-slate-700/60"
-            title="Toggle Light / Dark Mode"
+            className="p-2 rounded-lg app-surface-subtle app-text app-border border hover:opacity-80 transition-all shadow-sm flex items-center justify-center"
+            title={theme.mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {theme.mode === 'dark' ? '☀️' : '🌙'}
+            {theme.mode === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-500" />
+            )}
           </button>
 
           {/* Quick Continue with Google Button (when unauthenticated) */}
@@ -189,7 +209,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-google-signin-button"
               onClick={onGoogleSignIn || openUserModal}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-md transition-all border border-slate-200 shrink-0"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs shadow-md transition-all border border-slate-200 shrink-0"
               title="Continue with Google"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -218,11 +238,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="user-profile-button"
             onClick={openUserModal}
-            className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl transition-all border ${
-              currentUser
-                ? 'bg-indigo-950/70 border-indigo-500/50 hover:bg-indigo-900/80'
-                : 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/60'
-            }`}
+            className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl transition-all app-surface-subtle app-border border hover:opacity-90 shadow-sm"
           >
             {currentUser?.photoURL ? (
               <img
@@ -238,10 +254,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
             )}
             <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold text-slate-100 truncate max-w-[90px] leading-tight">
+              <span className="text-xs font-bold app-text truncate max-w-[90px] leading-tight">
                 {currentUser?.displayName || userStats.username}
               </span>
-              <span className="text-[9px] font-mono font-semibold text-emerald-400 leading-tight">
+              <span className="text-[9px] font-mono font-semibold text-emerald-500 leading-tight">
                 {currentUser ? (isAdmin ? '👑 Admin' : '✓ Signed In') : 'Sign In'}
               </span>
             </div>
@@ -250,48 +266,42 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Mobile Tab Bar */}
-      <div className="flex md:hidden border-t border-slate-800 bg-slate-900 px-2 py-1 justify-around text-xs">
+      <div className="flex md:hidden border-t app-border app-surface px-2 py-1 justify-around text-xs">
         <button
           onClick={() => setActiveTab('explore')}
-          className={`flex flex-col items-center py-1 px-2.5 rounded font-medium ${
-            activeTab === 'explore' ? 'text-indigo-400 font-bold' : 'text-slate-400'
-          }`}
+          className="flex flex-col items-center py-1 px-2.5 rounded font-medium"
+          style={{ color: activeTab === 'explore' ? theme.primaryColor : undefined }}
         >
           <HelpCircle className="w-4 h-4 mb-0.5" />
           Explore
         </button>
         <button
           onClick={() => setActiveTab('ai-gen')}
-          className={`flex flex-col items-center py-1 px-2.5 rounded font-medium ${
-            activeTab === 'ai-gen' ? 'text-indigo-400 font-bold' : 'text-slate-400'
-          }`}
+          className="flex flex-col items-center py-1 px-2.5 rounded font-medium"
+          style={{ color: activeTab === 'ai-gen' ? theme.primaryColor : undefined }}
         >
           <Bot className="w-4 h-4 mb-0.5" />
           AI Quiz
         </button>
         <button
           onClick={() => setActiveTab('leaderboard')}
-          className={`flex flex-col items-center py-1 px-2.5 rounded font-medium ${
-            activeTab === 'leaderboard' ? 'text-orange-400 font-bold' : 'text-slate-400'
-          }`}
+          className="flex flex-col items-center py-1 px-2.5 rounded font-medium"
+          style={{ color: activeTab === 'leaderboard' ? theme.accentColor : undefined }}
         >
           <Trophy className="w-4 h-4 mb-0.5" />
           Ranks
         </button>
         <button
           onClick={() => setActiveTab('stats')}
-          className={`flex flex-col items-center py-1 px-2.5 rounded font-medium ${
-            activeTab === 'stats' ? 'text-indigo-400 font-bold' : 'text-slate-400'
-          }`}
+          className="flex flex-col items-center py-1 px-2.5 rounded font-medium"
+          style={{ color: activeTab === 'stats' ? theme.primaryColor : undefined }}
         >
           <BarChart3 className="w-4 h-4 mb-0.5" />
           Stats
         </button>
         <button
           onClick={() => setActiveTab('admin')}
-          className={`flex flex-col items-center py-1 px-2.5 rounded font-medium ${
-            activeTab === 'admin' ? 'text-amber-400 font-bold' : 'text-slate-400'
-          }`}
+          className="flex flex-col items-center py-1 px-2.5 rounded font-medium text-amber-500"
         >
           <Crown className="w-4 h-4 mb-0.5" />
           Admin

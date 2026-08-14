@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Sparkles, Zap, ArrowRight, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Bot, Sparkles, Zap, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { QuizPack, Difficulty } from '../types';
 
 interface AiQuizGeneratorProps {
@@ -82,23 +82,30 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
     <div className="max-w-3xl mx-auto px-4 py-8 animate-fadeIn" id="ai-quiz-generator-container">
       {/* Banner */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/10 text-pink-600 dark:text-pink-400 font-extrabold text-xs uppercase tracking-wider mb-4 border border-pink-500/20">
+        <div
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider mb-4 border font-mono"
+          style={{
+            backgroundColor: `rgba(var(--color-primary-rgb), 0.12)`,
+            borderColor: `rgba(var(--color-primary-rgb), 0.25)`,
+            color: primaryColor,
+          }}
+        >
           <Bot className="w-4 h-4" /> Powered by Gemini AI
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold app-text mb-2">
           AI Custom Quiz Generator
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+        <p className="text-xs sm:text-sm app-text-muted max-w-lg mx-auto">
           Type ANY custom topic under the sun, and Gemini AI will instantly craft a 30s challenge quiz for you!
         </p>
       </div>
 
       {/* Main Generator Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl mb-8">
+      <div className="app-surface rounded-2xl p-6 sm:p-8 app-border border shadow-lg mb-8">
         <form onSubmit={handleGenerateQuiz} className="space-y-6">
           {/* Topic Input */}
           <div>
-            <label className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+            <label className="text-xs font-bold uppercase tracking-wider app-text-subtle block mb-2 font-mono">
               Topic or Niche Prompt
             </label>
             <div className="relative">
@@ -109,15 +116,15 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
                 value={topicInput}
                 onChange={e => setTopicInput(e.target.value)}
                 placeholder="e.g. 90s Hip Hop, Quantum Physics, Greek Gods, Electric Cars..."
-                className="w-full pl-4 pr-10 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full pl-4 pr-10 py-3.5 rounded-xl app-surface-subtle app-border border text-sm font-semibold app-text focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               />
-              <Sparkles className="w-5 h-5 text-pink-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Sparkles className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: primaryColor }} />
             </div>
           </div>
 
           {/* Quick Suggestion Chips */}
           <div>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider app-text-subtle block mb-2 font-mono">
               Trending Quick Topics
             </span>
             <div className="flex flex-wrap gap-2">
@@ -126,7 +133,7 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
                   type="button"
                   key={idx}
                   onClick={() => setTopicInput(topic)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors border border-slate-200/50 dark:border-slate-700/50"
+                  className="px-3 py-1.5 rounded-xl app-surface-subtle hover:opacity-80 app-text font-semibold text-xs transition-colors app-border border"
                 >
                   + {topic}
                 </button>
@@ -135,10 +142,10 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
           </div>
 
           {/* Options Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 app-border border-t">
             {/* Difficulty Selector */}
             <div>
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+              <label className="text-xs font-bold uppercase tracking-wider app-text-subtle block mb-2 font-mono">
                 Difficulty Level
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -147,11 +154,12 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
                     type="button"
                     key={d}
                     onClick={() => setDifficulty(d)}
-                    className={`py-2.5 rounded-xl font-extrabold text-xs transition-all ${
+                    className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
                       difficulty === d
-                        ? 'bg-violet-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                        ? 'text-white shadow-md'
+                        : 'app-surface-subtle app-text app-border border hover:opacity-80'
                     }`}
+                    style={difficulty === d ? { backgroundColor: primaryColor } : {}}
                   >
                     {d}
                   </button>
@@ -161,7 +169,7 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
 
             {/* Question Count Selector */}
             <div>
-              <label className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+              <label className="text-xs font-bold uppercase tracking-wider app-text-subtle block mb-2 font-mono">
                 Number of Questions
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -170,11 +178,12 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
                     type="button"
                     key={cnt}
                     onClick={() => setQuestionCount(cnt)}
-                    className={`py-2.5 rounded-xl font-extrabold text-xs transition-all ${
+                    className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
                       questionCount === cnt
-                        ? 'bg-pink-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                        ? 'text-white shadow-md'
+                        : 'app-surface-subtle app-text app-border border hover:opacity-80'
                     }`}
+                    style={questionCount === cnt ? { backgroundColor: primaryColor } : {}}
                   >
                     {cnt} Questions
                   </button>
@@ -185,7 +194,7 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
 
           {/* Error Message */}
           {errorMsg && (
-            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -195,7 +204,8 @@ export const AiQuizGenerator: React.FC<AiQuizGeneratorProps> = ({ onStartQuiz, p
           <button
             type="submit"
             disabled={isGenerating || !topicInput.trim()}
-            className="w-full py-4 rounded-2xl font-black text-sm text-white shadow-xl bg-gradient-to-r from-violet-600 via-pink-600 to-rose-600 hover:opacity-95 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-xl font-bold text-sm text-white shadow-lg flex items-center justify-center gap-2 transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: primaryColor }}
           >
             {isGenerating ? (
               <>

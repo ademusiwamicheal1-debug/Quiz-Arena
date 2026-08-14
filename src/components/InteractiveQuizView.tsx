@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Clock, CheckCircle2, XCircle, AlertCircle, Sparkles, Zap, Flame, Pause, Play, ArrowRight, X } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, AlertCircle, Sparkles, Flame, Pause, Play, ArrowRight, X } from 'lucide-react';
 import { Question, QuizPack } from '../types';
 import { soundEffects } from '../utils/soundEffects';
 
@@ -73,12 +73,10 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          // Time expired!
           handleTimeout();
           return 0;
         }
 
-        // Tick sounds
         if (prev <= 10) {
           soundEffects.playTick(true);
         } else {
@@ -96,7 +94,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
   const handleTimeout = () => {
     setIsAnswered(true);
-    setSelectedOption(null); // No option selected
+    setSelectedOption(null);
     soundEffects.playWrong();
     setStreak(0);
 
@@ -118,27 +116,24 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
     if (timerRef.current) clearInterval(timerRef.current);
 
     const timeTaken = QUESTION_TIMER_SECONDS - timeLeft;
-    const isCorrect = optionIndex === currentQuestion.correctIndex;
-
     setSelectedOption(optionIndex);
     setIsAnswered(true);
 
+    const isCorrect = optionIndex === currentQuestion.correctIndex;
+
     if (isCorrect) {
-      // Points formula: Base 100 pts + Speed bonus (up to 100 pts for instant answer) + Streak bonus
-      const speedBonus = Math.round((timeLeft / QUESTION_TIMER_SECONDS) * 100);
+      soundEffects.playCorrect();
       const newStreak = streak + 1;
-      const streakMultiplier = newStreak >= 3 ? 1.5 : 1.0;
-      const questionPoints = Math.round((100 + speedBonus) * streakMultiplier);
-
-      setScore(prev => prev + questionPoints);
       setStreak(newStreak);
-      if (newStreak > bestStreak) setBestStreak(newStreak);
-
-      if (newStreak >= 2) {
-        soundEffects.playStreakCombo(newStreak);
-      } else {
-        soundEffects.playCorrect();
+      if (newStreak > bestStreak) {
+        setBestStreak(newStreak);
       }
+
+      // Base score 100 + speed bonus up to 100 + streak bonus
+      const speedBonus = Math.round((timeLeft / QUESTION_TIMER_SECONDS) * 100);
+      const streakBonus = (newStreak - 1) * 20;
+      const questionScore = 100 + speedBonus + streakBonus;
+      setScore(prev => prev + questionScore);
     } else {
       soundEffects.playWrong();
       setStreak(0);
@@ -162,49 +157,39 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
       setSelectedOption(null);
       setIsAnswered(false);
     } else {
-      // Quiz completed!
-      const correctCount = userAnswers.filter(a => a.isCorrect).length;
-      const totalCount = quizPack.questions.length;
-      const accuracyPct = Math.round((correctCount / totalCount) * 100);
-
-      soundEffects.playVictoryFanfare();
+      // Quiz Completed!
+      const correctCount = userAnswers.filter(a => a.isCorrect).length + (selectedOption === currentQuestion.correctIndex ? 1 : 0);
+      const totalQuestions = quizPack.questions.length;
+      const accuracy = Math.round((correctCount / totalQuestions) * 100);
 
       onFinishQuiz({
         quizTitle: quizPack.title,
         category: quizPack.category,
         difficulty: quizPack.difficulty,
         score,
-        totalQuestions: totalCount,
+        totalQuestions,
         correctAnswers: correctCount,
-        accuracy: accuracyPct,
+        accuracy,
         timeSpentSeconds: totalTimeSeconds,
         answers: userAnswers,
       });
     }
   };
 
-  // Progress Bar Percentage
   const progressPercent = ((currentQuestionIndex + 1) / quizPack.questions.length) * 100;
   const timerPercent = (timeLeft / QUESTION_TIMER_SECONDS) * 100;
 
-  // Timer Color State
-  const getTimerColorClass = () => {
-    if (timeLeft <= 5) return 'text-rose-500 stroke-rose-500 animate-pulse';
-    if (timeLeft <= 10) return 'text-amber-500 stroke-amber-500';
-    return 'text-emerald-500 stroke-emerald-500';
-  };
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6" id="interactive-quiz-container">
-      {/* Top Header Controls & Live Stats */}
-      <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 shadow-xl mb-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 animate-fadeIn" id="interactive-quiz-container">
+      {/* Top Header Card */}
+      <div className="app-surface rounded-2xl p-5 app-border border shadow-lg mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           {/* Pause / Quit buttons */}
           <div className="flex items-center gap-2">
             <button
               id="pause-quiz-button"
               onClick={() => setIsPaused(!isPaused)}
-              className="p-2.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/60 transition-colors"
+              className="p-2.5 rounded-xl app-surface-subtle app-text app-border border hover:opacity-80 transition-colors"
               title={isPaused ? 'Resume Quiz' : 'Pause Quiz'}
             >
               {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4" />}
@@ -213,7 +198,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
             <button
               id="quit-quiz-button"
               onClick={() => setShowQuitConfirm(true)}
-              className="p-2.5 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-slate-700/60 transition-colors"
+              className="p-2.5 rounded-xl app-surface-subtle app-text-muted hover:text-rose-500 app-border border hover:bg-rose-500/10 transition-colors"
               title="Quit Quiz"
             >
               <X className="w-4 h-4" />
@@ -222,15 +207,18 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
           {/* Time Remaining Bar */}
           <div className="flex flex-col items-center">
-            <span className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider font-mono">Time Remaining</span>
+            <span className="text-[10px] uppercase app-text-subtle font-semibold tracking-wider font-mono">Time Remaining</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <div className="w-36 sm:w-48 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50">
+              <div className="w-36 sm:w-48 h-2.5 app-surface-subtle rounded-full overflow-hidden app-border border">
                 <motion.div
-                  className="h-full bg-orange-500"
-                  style={{ width: `${timerPercent}%` }}
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${timerPercent}%`,
+                    backgroundColor: timeLeft <= 5 ? '#f43f5e' : primaryColor,
+                  }}
                 />
               </div>
-              <span className={`text-sm font-mono font-bold ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-orange-400'}`}>
+              <span className={`text-sm font-mono font-bold ${timeLeft <= 5 ? 'text-rose-500 animate-pulse' : 'app-text'}`}>
                 {timeLeft}s
               </span>
             </div>
@@ -242,7 +230,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
               <motion.div
                 initial={{ scale: 0.8 }}
                 animate={{ scale: [1, 1.15, 1] }}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-500 text-xs font-bold"
               >
                 <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
                 {streak}x Streak
@@ -250,8 +238,8 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
             )}
 
             <div className="flex flex-col items-end">
-              <span className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider font-mono">Current Score</span>
-              <span className="text-xl font-mono font-bold text-indigo-400">
+              <span className="text-[10px] uppercase app-text-subtle font-semibold tracking-wider font-mono">Current Score</span>
+              <span className="text-xl font-mono font-bold" style={{ color: primaryColor }}>
                 {score.toLocaleString()}
               </span>
             </div>
@@ -260,33 +248,43 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
         {/* Dynamic Progress Bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+          <div className="flex justify-between text-[10px] font-mono font-bold app-text-subtle uppercase tracking-wider">
             <span>Overall Progress</span>
             <span>{Math.round(progressPercent)}%</span>
           </div>
-          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div className="w-full h-2 app-surface-subtle rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-indigo-500 rounded-full"
-              style={{ width: `${progressPercent}%` }}
+              className="h-full rounded-full"
+              style={{
+                width: `${progressPercent}%`,
+                backgroundColor: primaryColor,
+              }}
             />
           </div>
         </div>
       </div>
 
       {/* Main Question Card */}
-      <div className="bg-slate-900 rounded-xl p-6 sm:p-8 border border-slate-800 shadow-xl mb-6">
+      <div className="app-surface rounded-2xl p-6 sm:p-8 app-border border shadow-xl mb-6">
         {/* Category / Question count badge header */}
         <div className="flex justify-between items-center mb-6">
-          <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-full border border-indigo-500/30">
+          <span
+            className="px-3.5 py-1 text-xs font-bold rounded-full border font-mono"
+            style={{
+              backgroundColor: `rgba(var(--color-primary-rgb), 0.12)`,
+              borderColor: `rgba(var(--color-primary-rgb), 0.25)`,
+              color: primaryColor,
+            }}
+          >
             Question {currentQuestionIndex + 1} of {quizPack.questions.length}
           </span>
-          <span className="text-slate-500 text-xs italic">
+          <span className="app-text-muted text-xs italic font-medium">
             Category: {quizPack.category}
           </span>
         </div>
 
         {/* Question Text */}
-        <h2 className="text-xl sm:text-2xl font-semibold leading-snug mb-8 text-slate-100">
+        <h2 className="text-xl sm:text-2xl font-bold leading-snug mb-8 app-text">
           {currentQuestion.question}
         </h2>
 
@@ -296,24 +294,19 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
             const isSelected = selectedOption === idx;
             const isCorrectAnswer = idx === currentQuestion.correctIndex;
 
-            let buttonClass =
-              'border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-slate-200';
-            let badgeClass = 'bg-slate-700 text-slate-200';
-            let textClass = 'font-medium text-slate-200';
+            let buttonClass = 'app-surface-subtle app-border border hover:opacity-90 app-text';
+            let badgeClass = 'app-surface app-border border app-text';
 
             if (isAnswered) {
               if (isCorrectAnswer) {
-                buttonClass = 'border-green-500/50 bg-green-500/10';
-                badgeClass = 'bg-green-500 text-slate-900';
-                textClass = 'font-medium text-green-400';
+                buttonClass = 'border-emerald-500/50 bg-emerald-500/10';
+                badgeClass = 'bg-emerald-500 text-white font-bold';
               } else if (isSelected && !isCorrectAnswer) {
-                buttonClass = 'border-red-500/50 bg-red-500/10 animate-shake';
-                badgeClass = 'bg-red-500 text-white';
-                textClass = 'font-medium text-red-400';
+                buttonClass = 'border-rose-500/50 bg-rose-500/10 animate-shake';
+                badgeClass = 'bg-rose-500 text-white font-bold';
               } else {
-                buttonClass = 'border-slate-800 bg-slate-800/20 opacity-40';
-                badgeClass = 'bg-slate-800 text-slate-500';
-                textClass = 'font-medium text-slate-500';
+                buttonClass = 'opacity-40 app-surface-subtle app-border border';
+                badgeClass = 'app-surface-subtle app-text-subtle';
               }
             }
 
@@ -322,17 +315,17 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                 key={idx}
                 disabled={isAnswered}
                 onClick={() => handleSelectOption(idx)}
-                className={`flex items-center gap-4 p-5 rounded-lg border text-left transition-colors ${buttonClass}`}
+                className={`flex items-center gap-4 p-5 rounded-xl text-left transition-all ${buttonClass}`}
               >
-                <span className={`w-8 h-8 flex items-center justify-center rounded font-bold text-xs shrink-0 ${badgeClass}`}>
+                <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs shrink-0 ${badgeClass}`}>
                   {String.fromCharCode(65 + idx)}
                 </span>
-                <span className={`flex-1 text-sm ${textClass}`}>{option}</span>
+                <span className="flex-1 text-sm font-semibold">{option}</span>
                 {isAnswered && isCorrectAnswer && (
-                  <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
                 )}
                 {isAnswered && isSelected && !isCorrectAnswer && (
-                  <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                  <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
                 )}
               </button>
             );
@@ -346,23 +339,23 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="p-5 rounded-lg bg-slate-800/60 border border-slate-700 space-y-2 mb-6"
+              className="p-5 rounded-xl app-surface-subtle app-border border space-y-2 mb-6"
             >
               <div className="flex items-center gap-2">
                 {selectedOption === currentQuestion.correctIndex ? (
-                  <div className="flex items-center gap-2 text-green-400 font-bold text-xs uppercase tracking-wider">
+                  <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs uppercase tracking-wider">
                     <Sparkles className="w-4 h-4" />
                     Correct Answer (+Speed Bonus)
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase tracking-wider">
+                  <div className="flex items-center gap-2 text-rose-500 font-bold text-xs uppercase tracking-wider">
                     <AlertCircle className="w-4 h-4" />
                     {selectedOption === null ? 'Time Expired!' : 'Incorrect Choice'}
                   </div>
                 )}
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm app-text leading-relaxed">
                 {currentQuestion.explanation}
               </p>
             </motion.div>
@@ -374,7 +367,8 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
           <div className="flex justify-end">
             <button
               onClick={handleNextQuestion}
-              className="px-6 py-3 rounded-lg font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20 flex items-center gap-2 transition-colors"
+              className="px-6 py-3 rounded-xl font-bold text-sm text-white shadow-lg flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+              style={{ backgroundColor: primaryColor }}
             >
               {currentQuestionIndex + 1 === quizPack.questions.length ? 'View Final Results' : 'Next Question'}
               <ArrowRight className="w-4 h-4" />
@@ -385,22 +379,23 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
       {/* High Density Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider block mb-1 font-mono">
+        <div className="app-surface rounded-2xl p-4 app-border border shadow-md">
+          <span className="text-[10px] uppercase app-text-subtle font-bold tracking-wider block mb-1 font-mono">
             Global Accuracy
           </span>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold font-mono text-slate-100">
+            <span className="text-2xl font-bold font-mono app-text">
               {userAnswers.length > 0
                 ? `${Math.round((userAnswers.filter(a => a.isCorrect).length / userAnswers.length) * 100)}%`
                 : '84%'}
             </span>
-            <span className="text-green-500 text-xs font-bold pb-1 font-mono">+2.4%</span>
+            <span className="text-emerald-500 text-xs font-bold pb-1 font-mono">+2.4%</span>
           </div>
-          <div className="w-full h-1 bg-slate-800 mt-2 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 app-surface-subtle mt-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-indigo-500"
+              className="h-full rounded-full"
               style={{
+                backgroundColor: primaryColor,
                 width: userAnswers.length > 0
                   ? `${Math.round((userAnswers.filter(a => a.isCorrect).length / userAnswers.length) * 100)}%`
                   : '84%',
@@ -409,33 +404,33 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider block mb-1 font-mono">
+        <div className="app-surface rounded-2xl p-4 app-border border shadow-md">
+          <span className="text-[10px] uppercase app-text-subtle font-bold tracking-wider block mb-1 font-mono">
             Best Streak
           </span>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold font-mono text-orange-400">
+            <span className="text-2xl font-bold font-mono text-orange-500">
               {Math.max(streak, bestStreak)}
             </span>
-            <span className="text-slate-500 text-xs font-bold pb-1">Correct</span>
+            <span className="app-text-muted text-xs font-bold pb-1">Correct</span>
           </div>
           <div className="flex gap-1 mt-2">
-            <div className={`h-1 flex-1 rounded-full ${streak >= 1 ? 'bg-orange-500' : 'bg-slate-800'}`} />
-            <div className={`h-1 flex-1 rounded-full ${streak >= 2 ? 'bg-orange-500' : 'bg-slate-800'}`} />
-            <div className={`h-1 flex-1 rounded-full ${streak >= 3 ? 'bg-orange-500' : 'bg-slate-800'}`} />
-            <div className={`h-1 flex-1 rounded-full ${streak >= 5 ? 'bg-orange-500' : 'bg-slate-800'}`} />
+            <div className={`h-1 flex-1 rounded-full ${streak >= 1 ? 'bg-orange-500' : 'app-surface-subtle'}`} />
+            <div className={`h-1 flex-1 rounded-full ${streak >= 2 ? 'bg-orange-500' : 'app-surface-subtle'}`} />
+            <div className={`h-1 flex-1 rounded-full ${streak >= 3 ? 'bg-orange-500' : 'app-surface-subtle'}`} />
+            <div className={`h-1 flex-1 rounded-full ${streak >= 5 ? 'bg-orange-500' : 'app-surface-subtle'}`} />
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-          <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider block mb-1 font-mono">
+        <div className="app-surface rounded-2xl p-4 app-border border shadow-md">
+          <span className="text-[10px] uppercase app-text-subtle font-bold tracking-wider block mb-1 font-mono">
             Global Rank
           </span>
           <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold font-mono text-slate-100">#42</span>
-            <span className="text-slate-500 text-xs font-bold pb-1">Top 5%</span>
+            <span className="text-2xl font-bold font-mono app-text">#42</span>
+            <span className="app-text-muted text-xs font-bold pb-1">Top 5%</span>
           </div>
-          <div className="text-[10px] text-indigo-400 mt-2 font-bold uppercase font-mono tracking-wider">
+          <div className="text-[10px] mt-2 font-bold uppercase font-mono tracking-wider" style={{ color: primaryColor }}>
             Diamond League
           </div>
         </div>
@@ -443,18 +438,21 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
       {/* Paused Overlay Modal */}
       {isPaused && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full text-center border border-slate-200 dark:border-slate-800 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="app-surface rounded-2xl p-8 max-w-sm w-full text-center app-border border shadow-2xl">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: `rgba(var(--color-primary-rgb), 0.15)`, color: primaryColor }}
+            >
               <Pause className="w-8 h-8" />
             </div>
-            <h3 className="font-extrabold text-xl mb-2 text-slate-900 dark:text-white">Quiz Paused</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            <h3 className="font-extrabold text-xl mb-2 app-text">Quiz Paused</h3>
+            <p className="text-xs app-text-muted mb-6">
               Take a breath! The 30s timer is frozen.
             </p>
             <button
               onClick={() => setIsPaused(false)}
-              className="w-full py-3.5 rounded-2xl font-black text-sm text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
               style={{ backgroundColor: primaryColor }}
             >
               Resume Quiz
@@ -465,22 +463,22 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
       {/* Quit Confirm Modal */}
       {showQuitConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full text-center border border-slate-200 dark:border-slate-800 shadow-2xl">
-            <h3 className="font-extrabold text-xl mb-2 text-slate-900 dark:text-white">Quit Quiz?</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="app-surface rounded-2xl p-8 max-w-sm w-full text-center app-border border shadow-2xl">
+            <h3 className="font-extrabold text-xl mb-2 app-text">Quit Quiz?</h3>
+            <p className="text-xs app-text-muted mb-6">
               Your progress for this attempt will be lost. Are you sure?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowQuitConfirm(false)}
-                className="flex-1 py-3 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                className="flex-1 py-3 rounded-xl font-bold text-xs app-surface-subtle app-text app-border border"
               >
                 Keep Playing
               </button>
               <button
                 onClick={onQuitQuiz}
-                className="flex-1 py-3 rounded-2xl font-bold text-xs bg-rose-600 text-white shadow-md"
+                className="flex-1 py-3 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md"
               >
                 Quit Quiz
               </button>
